@@ -15,7 +15,7 @@
 
         textarea {
             width: 100%;
-            height: 200px;
+            height: 300px;
             padding: 10px;
             font-family: monospace;
             font-size: 14px;
@@ -73,19 +73,28 @@
     <h1>Zerofy's Prime Path Coverage Tool</h1>
 
     <p>
-        Enter graph edges in the box below.<br>
-        Each line represents an edge between 2 nodes separated with a space ( <code>node1 node2</code> ).<br>
+        Enter graph information in the box below using one of the following formats:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<b>1.</b> Each line represents a directed edge between two nodes separated with a space ( <code>node1 node2</code> ).<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<b>2.</b> Each line represents a node and all of its neighbors separated with spaces ( <code>node1 nb1 nb2 ...</code> ).<br>
         Lines starting with <code>#</code> are ignored.
     </p>
 
-    <span><u><b>The algorithm only works for directed graphs.</b></u></span>
-    <textarea id = "graph_input" placeholder = "Example:
+    <span><u><b>The algorithm assumes the input is a directed graph.</b></u></span>
+    <textarea id = "graph_input" placeholder = "Example Input 1:
 1 2
 2 3
 2 4
 3 2
 
-This represents a graph with 4 nodes (1, 2, 3, 4) and 4 directed edges (1->2, 2->3, 2->4, 3->2)."></textarea>
+Example Input 2:
+1 2
+2 3 4
+3 2
+4
+
+Both examples represent the same graph with:
+  * 4 nodes (1, 2, 3, 4)
+  * 4 directed edges (1->2, 2->3, 2->4, 3->2)"></textarea>
 
     <div style = "display: flex; justify-content: space-between;">
         <button id = "compute-btn" onclick = "compute_paths()">Compute Prime Paths</button>
@@ -116,8 +125,6 @@ This represents a graph with 4 nodes (1, 2, 3, 4) and 4 directed edges (1->2, 2-
                 const response = await fetch('prime_path_coverage.py');
                 const ppc_code = await response.text();
                 await pyodide.runPythonAsync(ppc_code);
-
-                feedback.textContent = '🐍 Python environment loaded successfully.';
             }
         }
 
@@ -129,17 +136,21 @@ This represents a graph with 4 nodes (1, 2, 3, 4) and 4 directed edges (1->2, 2-
                 return;
             }
 
-            feedback.textContent = '🤔 Computing prime paths...';
             output.style.display = 'none';
 
             try {
                 await load_python_script();
-                pyodide.globals.set('graph_input', input);
 
+                feedback.textContent = '📝 Parsing input...';
+                pyodide.globals.set('graph_input', input);
+                const graph = await pyodide.runPythonAsync(`
+                    parse_graph(graph_input)
+                `);
+
+                feedback.textContent = '🤔 Computing prime paths...';
+                pyodide.globals.set('graph', graph)
                 const result = await pyodide.runPythonAsync(`
-                    graph = parse_graph(graph_input)
-                    result = compute_prime_paths(graph)
-                    result
+                    compute_prime_paths(graph)
                 `);
 
                 const output_paths = result.get('paths');

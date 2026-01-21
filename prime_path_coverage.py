@@ -2,45 +2,45 @@ def parse_graph(input_text: str) -> dict[str, list[str]]:
     """
     Create an internal representation of a graph from the given text input.
 
-    Supported edge formats:
-        - `node1 node2`
-        - `node1 - node2`
-        - `node1 -> node2`
+    Supported input formats:
+        - Each line represents a directed edge between two nodes separated with a space ( `node1 node2` ).
+        - Each line represents a node and all of its neighbors separated with spaces ( `node1 nb1 nb2 ...` ).
 
     Lines starting with `#` are ignored.
 
     ------
 
     Arguments:
-        input_text: String containing graph edges in different lines.
+        input_text: String containing graph information.
 
     ------
 
     Returns:
         A directed graph in dictionary form where each key is a node and each value is a list of neighbors.
     """
+
     graph = {}
 
-    for idx, line in enumerate(input_text.strip().split('\n'), start = 1):
+    for num, line in enumerate(input_text.strip().split('\n'), start = 1):
         line = line.strip()
         if not line or line.startswith('#'):
             continue
 
         nodes = line.split(' ')
-        if not nodes or len(nodes) != 2:
-            raise Exception(f'Invalid edge format at line {idx}: {line}')
+        if not nodes:
+            raise Exception(f'Invalid input format at line {num}: {line}')
 
-        node1, node2 = nodes
+        node, neighbors = nodes[0], nodes[1:]
+        if node not in graph:
+            graph[node] = []
 
-        if node1 not in graph:
-            graph[node1] = []
-        if node2 not in graph:
-            graph[node2] = []
-
-        graph[node1].append(node2)
+        for neighbor in neighbors:
+            graph[node].append(neighbor)
+            if neighbor not in graph:
+                graph[neighbor] = []
 
     if not graph:
-        raise Exception(f'Invalid graph input.')
+        raise Exception(f'Invalid input.')
 
     return graph
 
@@ -67,64 +67,64 @@ def compute_prime_paths(graph: dict[str, list[str]]) -> dict[str, str | list[lis
     while True:
         counter += 1
         debug += f'Iteration {counter}:\n'
-        made_changes = False
 
+        if counter == 100_000:
+            raise Exception('Maximum iterations reached.')
+
+        made_changes = False
         for idx in range(len(paths)):
             path = paths[idx]
-            if not path:
+            pcpy = path.copy()
+            pset = set(path)
+
+            if len(pset) != len(path):
+                debug += f'| {pcpy} contains duplicate nodes, skipped.\n'
                 continue
 
-            pstr = path.copy()
             node = path[-1]
+            neighbors = graph[node]
+            has_one_neighbor = len(neighbors) == 1
+            split_path = False
 
-            has_one_neighbor = len(graph[node]) == 1
-            remove_path = False
-            for neighbor in graph[node]:
-                if max([path.count(n) for n in set(path)]) > 1:
-                    debug += f'[Path Ended - A] | {pstr} --> {path}\n'
-                    continue
-
-                if neighbor in path and neighbor != path[0]:
-                    debug += f'[Path Ended - B] | {pstr} --> {path}\n'
+            for neighbor in neighbors:
+                if neighbor in pset and neighbor != path[0]:
+                    debug += f'| {pcpy} + [\'{neighbor}\'] creates a cycle, skipped.\n'
                     continue
 
                 if has_one_neighbor:
                     path.append(neighbor)
-                    debug += f'[Path Updated  ] | {pstr} --> {path}\n'
+                    debug += f'| {pcpy} ──▶ {path}\n'
+
+                elif split_path:
+                    paths.append(pcpy + [neighbor])
+                    debug += f'| {" " * len(str(pcpy))} └─▶ {paths[-1]}\n'
 
                 else:
-                    paths.append(path + [neighbor])
-                    debug += f'[Path Split    ] | {pstr} --> {paths[-1]}\n'
-                    remove_path = True
+                    path.append(neighbor)
+                    split_path = True
+                    debug += f'| {pcpy} ──▶ {path}\n'
 
                 made_changes = True
 
-            if remove_path:
-                path.clear()
-                debug += f'[Path Removed  ] | {pstr} --> {path}\n'
-
         debug += '\n'
         if not made_changes:
-            debug += 'Done.\n'
-            debug += '-' * 100 + '\n\n'
+            debug += 'Done.\n\n'
             break
 
     debug += 'Removing sub-paths...\n'
-    for i in range(len(paths)):
-        if not paths[i]:
-            continue
-
+    num_paths = len(paths)
+    for i in range(num_paths):
         path = str(paths[i])[1 : -1]
 
-        for j in range(len(paths)):
+        for j in range(num_paths):
             if i == j:
                 continue
 
             if path in str(paths[j]):
-                debug += f'[Found Sub-path] | {paths[i]} --> {paths[j]}\n'
+                debug += f'| {paths[i]} ──▶ {paths[j]}\n'
                 paths[i].clear()
                 break
-    debug += 'Done.'
+    debug += '\nDone.'
 
     paths = [path for path in paths if path]
     paths.sort(key = lambda x: (len(x), x))

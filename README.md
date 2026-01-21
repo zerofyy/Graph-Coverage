@@ -13,13 +13,14 @@ Alternatively, the algorithm can be found in [this script](prime_path_coverage.p
 ```python
 # ...code from the script...
 
-graph = {
-    1 : [2],    # 1 -> 2
-    2 : [3, 4], # 2 -> 3, 2 -> 4
-    3 : [2],    # 3 -> 2
-    4 : []      # 4 -> /  this node has no neighbors
-}
+# Read input from file
+with open('graph_input.txt', 'r') as file:
+    graph = parse_graph(file.read())
+    
+# Read input from console
+graph = parse_graph(input())
 
+# Compute prime paths
 result = compute_prime_paths(graph)
 paths = result['paths']
 
@@ -32,4 +33,4 @@ for path in paths:
 ```
 
 ## TODO
-- Allow inputting graphs on the site in `node neighbor1 neighbor2 ...` format.
+- Look into implementing an algorithm to generate test cases from prime paths.
