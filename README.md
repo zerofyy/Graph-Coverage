@@ -7,7 +7,7 @@
 This is a freely available tool for computing graph coverage in directed graphs used in path-based software testing.
 
 ## ⚙ Usage
-The tool is available as a GitHub Page [here](https://zerofyy.github.io/Prime-Path-Coverage/) with instructions on the site.
+The tool is available as a GitHub Page [here](https://zerofyy.github.io/Graph-Coverage/) with instructions on the site.
 
 Alternatively, the algorithms can be found in [this script](graph_coverage.py) which can be used like so:
 ```python
