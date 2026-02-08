@@ -29,23 +29,23 @@
             cursor: pointer;
         }
 
-        #compute-btn {
-            background-color: #52b1f9
+        .compute-btn {
+            background-color: #52b1f9;
         }
 
-        #compute-btn:hover {
+        .compute-btn:hover {
             background-color: #0290fc;
         }
 
-        #debug-btn {
-            background-color: #f95252
+        .inactive-btn {
+            background-color: #f96652;
         }
 
-        #debug-btn:hover {
-            background-color: #fc0f02;
+        .inactive-btn:hover {
+            background-color: #fc0202;
         }
 
-        #output, #debug {
+        #output {
             margin-top: 20px;
             white-space: pre-wrap;
             font-family: monospace;
@@ -70,7 +70,7 @@
     </style>
 </head>
 <body>
-    <h1>Zerofy's Prime Path Coverage Tool</h1>
+    <h1>Zerofy's Graph Coverage Tool</h1>
 
     <p>
         Enter graph information in the box below using one of the following formats:<br>
@@ -96,25 +96,18 @@ Both examples represent the same graph with:
   * 4 nodes (1, 2, 3, 4)
   * 4 directed edges (1->2, 2->3, 2->4, 3->2)"></textarea>
 
-    <div style = "display: flex; justify-content: space-between;">
-        <button id = "compute-btn" onclick = "compute_paths()">Compute Prime Paths</button>
-        <button id = "debug-btn" onclick = "toggle_debug()">Toggle Debug Output</button>
-    </div>
+    <button class = "compute-btn" onclick = "compute_prime_paths()">Compute Prime Paths</button>
+    <button class = "compute-btn" onclick = "compute_edge_pairs()">Compute Edge Pairs</button>
+    <button class = "inactive-btn" onclick = "generate_tests()">Generate Tests</button>
 
     <p></p>
     <div id = "feedback"></div>
     <div id = "output"></div>
-    <div id = "debug">Nothing to show yet.</div>
 
     <script>
         let pyodide = null;
         const output = document.getElementById('output');
         const feedback = document.getElementById('feedback');
-        const debug = document.getElementById('debug');
-
-        function toggle_debug() {
-            debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
-          }
 
         async function load_python_script() {
             if (!pyodide) {
@@ -122,13 +115,14 @@ Both examples represent the same graph with:
 
                 pyodide = await loadPyodide();
 
-                const response = await fetch('prime_path_coverage.py');
+                const response = await fetch('graph_coverage.py');
                 const ppc_code = await response.text();
                 await pyodide.runPythonAsync(ppc_code);
             }
         }
 
-        async function compute_paths() {
+        async function parse_input() {
+            output.style.display = 'none';
             let input = document.getElementById('graph_input').value;
 
             if (!input.trim()) {
@@ -136,38 +130,105 @@ Both examples represent the same graph with:
                 return;
             }
 
-            output.style.display = 'none';
+            feedback.textContent = '🔍 Parsing input...';
+            pyodide.globals.set('graph_input', input);
+            const graph = await pyodide.runPythonAsync(`
+                parse_graph(graph_input)
+            `);
 
+            return graph;
+        }
+
+        async function compute_prime_paths() {
             try {
                 await load_python_script();
 
-                feedback.textContent = '📝 Parsing input...';
-                pyodide.globals.set('graph_input', input);
-                const graph = await pyodide.runPythonAsync(`
-                    parse_graph(graph_input)
-                `);
+                let graph = await parse_input();
 
                 feedback.textContent = '🤔 Computing prime paths...';
                 pyodide.globals.set('graph', graph)
-                const result = await pyodide.runPythonAsync(`
-                    compute_prime_paths(graph)
+                let state = await pyodide.runPythonAsync(`
+                    init_computation_state(graph)
+                `)
+
+                while (true) {
+                    pyodide.globals.set('state', state);
+                    state = await pyodide.runPythonAsync(`
+                        _step_prime_paths(state, 10000)
+                    `)
+
+                    const progress = state.get('progress');
+                    if (progress === 'computed') {
+                        break;
+                    }
+
+                    feedback.textContent = '🤔 ' + progress;
+                }
+
+                feedback.textContent = '🧹 Removing sub-paths from ' + state.get('paths').length + ' potential prime paths...';
+                pyodide.globals.set('state', state);
+                state = await pyodide.runPythonAsync(`
+                    _cleanup_prime_paths(state)
                 `);
 
-                const output_paths = result.get('paths');
-                const output_debug = result.get('debug');
+                const output_paths = state.get('paths');
 
                 pyodide.globals.set('output_paths', output_paths);
                 output.textContent = await pyodide.runPythonAsync(`format_output(output_paths)`);
                 output.style.display = 'block';
-                feedback.textContent = '✅ Done.';
-
-                debug.textContent = output_debug;
+                feedback.textContent = '✅ Found a total of ' + state.get('paths').length + ' prime paths in ' + state.get('iteration') + ' iterations.';
             } catch (error) {
                 output.textContent = 'Error: ' + error.message;
                 feedback.textContent = '❌ An error occurred while computing prime paths.';
             } finally {
                 output.style.display = 'block';
             }
+        }
+
+
+        async function compute_edge_pairs() {
+            try {
+                await load_python_script();
+
+                let graph = await parse_input();
+
+                feedback.textContent = '🤔 Computing edge pairs...';
+                pyodide.globals.set('graph', graph)
+                let state = await pyodide.runPythonAsync(`
+                    init_computation_state(graph)
+                `)
+
+                while (true) {
+                    pyodide.globals.set('state', state);
+                    state = await pyodide.runPythonAsync(`
+                        _step_edge_pairs(state, 10000)
+                    `)
+
+                    const progress = state.get('progress');
+                    if (progress === 'computed') {
+                        break;
+                    }
+
+                    feedback.textContent = '🤔 ' + progress;
+                }
+
+                const output_paths = state.get('paths');
+
+                pyodide.globals.set('output_paths', output_paths);
+                output.textContent = await pyodide.runPythonAsync(`format_output(output_paths)`);
+                output.style.display = 'block';
+                feedback.textContent = '✅ Found a total of ' + state.get('paths').length + ' edge pairs in ' + state.get('iteration') + ' iterations.';
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+                feedback.textContent = '❌ An error occurred while computing prime paths.';
+            } finally {
+                output.style.display = 'block';
+            }
+        }
+
+
+        async function generate_tests() {
+            alert('Tests generation coming soon.');
         }
     </script>
 </body>

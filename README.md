@@ -1,36 +1,43 @@
 <h1 align="center">
-  Zerofy's Prime Path Coverage Tool
+  Zerofy's Graph Coverage Tool
 </h1>
 
 
 ## 📄 Overview
-This is a freely available tool for computing prime path coverage in directed graphs used in path-based software testing.
+This is a freely available tool for computing graph coverage in directed graphs used in path-based software testing.
 
 ## ⚙ Usage
 The tool is available as a GitHub Page [here](https://zerofyy.github.io/Prime-Path-Coverage/) with instructions on the site.
 
-Alternatively, the algorithm can be found in [this script](prime_path_coverage.py) which can be used like so:
+Alternatively, the algorithms can be found in [this script](graph_coverage.py) which can be used like so:
 ```python
-# ...code from the script...
+from graph_coverage import parse_graph, compute_prime_paths, compute_edge_pairs, format_output
+
 
 # Read input from file
 with open('graph_input.txt', 'r') as file:
     graph = parse_graph(file.read())
-    
-# Read input from console
+
+# Read input from terminal
 graph = parse_graph(input())
 
 # Compute prime paths
-result = compute_prime_paths(graph)
-paths = result['paths']
+paths = compute_prime_paths(graph)
 
-# Print paths formatted into a Num,Len,Path table.
+# Compute edge pairs
+pairs = compute_edge_pairs(graph)
+
+# Print paths or pairs formatted into a Num,Len,Path table.
 print(format_output(paths))
+print(format_output(pairs))
 
-# Print raw paths, as lists of nodes.
+# Print raw paths or pairs, as lists of nodes.
 for path in paths:
     print(path)
+    
+for pair in pairs:
+    print(pair)
 ```
 
 ## TODO
-- Look into implementing an algorithm to generate test cases from prime paths.
+- Implement tests generation.
